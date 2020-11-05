@@ -123,134 +123,6 @@ function flowline!(F, varin, varin_old, params, grid, bedfun::Function)
     F[2*NX+1]        = 3*h[NX] - h[NX-1] - 2*hf;
 end
 
-#jacobian of flowline model
- # function flowline_jac!(J, varin, varin_old, params, grid, bedfun::Function, dbdxfun::Function)
- #    #Unpack grid
- #    NX = params["NX"];
- #    dt = params["dt"]/params["tscale"];
- #    ds = grid["dsigma"];
- #    sigma = grid["sigma"];
- #
- #    #Unpack parameters
- #    xscale = params["xscale"];
- #    hscale = params["hscale"];
- #    lambda = params["lambda"];
- #    m      = params["m"];
- #    n      = params["n"];
- #    a      = params["accum"]/params["ascale"];
- #    eps    = params["eps"];
- #    transient = params["transient"];
- #
- #    #Unpack variables
- #    h = varin[1:NX]
- #    u = varin[NX+1:2*NX]
- #    xg = varin[2*NX+1]
- #
- #    h_old = varin_old[1:NX];
- #    xg_old = varin_old[2*NX+1];
- #
- #    #Calculate bed
- #    hf = -bedfun(xg*xscale,params)/(hscale*(1-lambda));
- #    b =  -bedfun(xg.*sigma.*xscale,params)./hscale;
- #
- #    dhfdx = -dbdxfun(xg*xscale,params)/(hscale*(1-lambda));
- #    dbdx  = -dbdxfun(xg.*sigma.*xscale,params)./hscale;
- #
- #    #Calculate thickness functions
- #    J[1,1]      = transient/dt + (2*u[1])/(ds[1]*xg);
- #    J[1,2*NX+1]      = -(2*h[1]*u[1])/(ds[1]*xg^2);
- #
- #    J[2,1]      = transient*sigma[2]*(xg-xg_old)/(2*dt.*ds[2]*xg);
- #    J[2,2]      = transient/dt + ((u[2]+u[1]))/(2*xg*ds[2]);
- #    J[2,3]      = -transient*sigma[2]*(xg-xg_old)/(2*dt.*ds[2]*xg);
- #    J[2,NX+1]   = h[2]/(2*xg*ds[2]);
- #    J[2,NX+2]   = h[2]/(2*xg*ds[2]);
- #    J[2,2*NX+1]      = transient*sigma[2]*(xg_old/(xg^2))*(h[3]-h[1])/(2*dt.*ds[2]) -
- #                        (h[2]*(u[2]+u[1]))/(2*(xg^2)*ds[2]);
- #
- #    Jh_h0 = spzeros(NX-1);
- #    Jh_hm1 = spzeros(NX-1);
- #    Jh_hp1 = spzeros(NX-1);
- #    Jh_u0 = spzeros(NX-1);
- #    Jh_um1 = spzeros(NX-1);
- #    Jh_um2 = spzeros(NX-2);
- #    Jh_xg = spzeros(NX);
- #
- #    Jh_h0[3:NX-1]  = transient./dt .+ (u[3:NX-1] .+ u[2:NX-2])./(2 .* xg .* ds[3:NX-1]);
- #    Jh_hm1[3:NX-1] = transient.*sigma[3:NX-1].*(xg - xg_old)./(2 .* dt .* ds[3:NX-1] .* xg) .-
- #                        (u[2:NX-2] .+ u[1:NX-3])./(2 .* xg .* ds[3:NX-1]);
- #    Jh_hp1[3:NX-1] = -transient.*sigma[3:NX-1].*(xg - xg_old)./(2 .* dt .* ds[3:NX-1] .* xg);
- #    Jh_u0[3:NX-1]  = h[3:NX-1]./(2 .* xg .* ds[3:NX-1]);
- #    Jh_um1[3:NX-1]  = (h[3:NX-1] .- h[2:NX-2])./(2 .* xg .* ds[3:NX-1]);
- #    Jh_um2[2:NX-2]  = -h[1:NX-3]./(2 .* xg .* ds[2:NX-2]);
- #    Jh_xg[3:NX-1] = -transient.*sigma[3:NX-1].*(xg_old/(xg^2)).*(h[4:NX].-h[2:NX-2])./(2 .* dt .* ds[3:NX-1]) .-
- #                                            (h[3:NX-1] .* (u[3:NX-1] .+ u[2:NX-2]) .- h[2:NX-2] .* (u[2:NX-2] .+ u[1:NX-3]))./(2 .* (xg^2) .* ds[3:NX-1]);
- #
- #    Jh_h = spdiagm(NX, NX, 0 => Jh_h0, -1 => Jh_hm1, 1 => Jh_hp1);
- #    Jh_u = spdiagm(NX, NX, 0 => Jh_u0, -1 => Jh_um1, -2 => Jh_um2);
- #
- #    J[1:NX,1:NX] = J[1:NX,1:NX] .+ Jh_h;
- #    J[1:NX,NX+1:2*NX] = J[1:NX,NX+1:2*NX] .+ Jh_u;
- #    J[1:NX,2*NX+1] = J[1:NX,2*NX+1] .+ Jh_xg;
- #
- #    J[NX,NX-1]     = transient*sigma[NX]*(xg-xg_old)/(dt*ds[NX-1]*xg) +
- #                        (-(u[NX-1]+u[NX-2]))/(2*xg*ds[NX-1]);
- #    J[NX,NX]       = transient/dt - transient*sigma[NX]*(xg-xg_old)/(dt*ds[NX-1]*xg) +
- #                        (u[NX]+u[NX-1])/(2*xg*ds[NX-1]);
- #    J[NX,2*NX-2]   = -h[NX-1]/(2*xg*ds[NX-1]);
- #    J[NX,2*NX-1]    = (h[NX] - h[NX-1])/(2*xg*ds[NX-1]);
- #    J[NX,2*NX]     = h[NX]/(2*xg*ds[NX-1]);
- #    J[NX,2*NX+1]   = transient*sigma[NX]*(xg_old/(xg^2))*(h[NX]-h[NX-1])/(dt*ds[NX-1]) -
- #                        (h[NX]*(u[NX]+u[NX-1]) - h[NX-1]*(u[NX-1]+u[NX-2]))/(2*(xg^2)*ds[NX-1]);
- #
- #    #Calculate velocity functions
- #    J[NX+1,1]      = (4*eps/(xg*ds[1])^((1/n)+1))*(-(2*u[1])*abs(2*u[1])^((1/n)-1)) -
- #                    0.5*(h[2]-b[2]-h[1]+b[1])/(xg*ds[1]) + 0.5*(h[1]+h[2])/(xg*ds[1]);
- #    J[NX+1,2]      = (4*eps/(xg*ds[1])^((1/n)+1))*((u[2]-u[1])*abs(u[2]-u[1])^((1/n)-1)) -
- #                    0.5*(h[2]-b[2]-h[1]+b[1])/(xg*ds[1]) - 0.5*(h[1]+h[2])/(xg*ds[1]);
- #    J[NX+1,NX+1]      = ((4*eps/(xg*ds[1]))^((1/n)+1))*(-h[2]*abs(u[2]-u[1])^((1/n)-1) - h[2]*(((u[2]-u[1])^2)/abs(u[2]-u[1]))*((1/n)-1)*abs(u[2]-u[1])^((1/n)-2) - h[1]*2*abs(2*u[1])^((1/n)-1) - h[1]*(2*u[1])^2/(abs(2*u[1]))*((1/n)-1)*abs(2*u[1])^((1/n)-2)) -
- #                    abs(u[1])^(m-1) - ((u[1]^2)/(abs(u[1])))*(m-1)*abs(u[1])^(m-2);
- #    J[NX+1,NX+2]      = ((4*eps/(xg*ds[1]))^((1/n)+1))*(h[2]*abs(u[2]-u[1])^((1/n)-1) + h[2]*((u[2]-u[1])^2)/(abs(u[2]-u[1]))*abs(u[2]-u[1])^((1/n)-2));
- #    J[NX+1,2*NX+1]      = -((1/n)+1)*(xg^((-1/n)-2))*(4*eps/(ds[1])^((1/n)+1))*(h[2]*(u[2]-u[1])*abs(u[2]-u[1])^((1/n)-1) - h[1]*(2*u[1])*abs(2*u[1])^((1/n)-1)) +
- #                    0.5*(h[1]+h[2])*(h[2]-b[2]-h[1]+b[1])/((xg^2)*ds[1]);
- #
- #    F[2:NX-1] = (4 .* eps ./(xg .* ds[2:NX-1]).^((1/n)+1)) .* (h[3:NX] .* (u[3:NX] .- u[2:NX-1]) .* abs.(u[3:NX].-u[2:NX-1]).^((1/n)-1) .-
- #                h[2:NX-1] .* (u[2:NX-1] .- u[1:NX-2]) .* abs.(u[2:NX-1] .- u[1:NX-2]).^((1/n)-1)) .-
- #                u[2:NX-1] .* abs.(u[2:NX-1]).^(m-1) .- 0.5 .* (h[2:NX-1] .+ h[3:NX]) .* (h[3:NX] .- b[3:NX] .- h[2:NX-1] .+ b[2:NX-1])./(xg .* ds[2:NX-1]);
- #
- #    Ju_h0 = spzeros(NX-1);
- #    Ju_hp1 = spzeros(NX-1);
- #    Ju_u0 = spzeros(NX-1);
- #    Ju_um1 = spzeros(NX-1);
- #    Ju_up1 = spzeros(NX-1);
- #    Ju_xg = spzeros(NX);
- #
- #    Ju_h0[2:NX-1] = (4 .* eps ./(xg .* ds[2:NX-1]).^((1/n)+1)) .* (-(u[2:NX-1] .- u[1:NX-2]) .* abs.(u[2:NX-1] .- u[1:NX-2]).^((1/n)-1)) .-
- #                0.5 .* (h[3:NX] .- b[3:NX] .- h[2:NX-1] .+ b[2:NX-1])./(xg .* ds[2:NX-1]) + 0.5 .* (h[2:NX-1] .+ h[3:NX]) ./ (xg .* ds[2:NX-1]);
- #    Ju_hp1[2:NX-1] = (4 .* eps ./(xg .* ds[2:NX-1]).^((1/n)+1)) .* ((u[3:NX] .- u[2:NX-1]) .* abs.(u[3:NX].-u[2:NX-1]).^((1/n)-1)) .-
- #                0.5 .* (h[3:NX] .- b[3:NX] .- h[2:NX-1] .+ b[2:NX-1])./(xg .* ds[2:NX-1]) - 0.5 .* (h[2:NX-1] .+ h[3:NX])./(xg .* ds[2:NX-1]);
- #    Ju_u0[2:NX-1] = (4 .* eps ./(xg .* ds[2:NX-1]).^((1/n)+1)) .* (-h[3:NX] .* abs.(u[3:NX].-u[2:NX-1]).^((1/n)-1) .- h[3:NX] .* (((u[3:NX] .- u[2:NX-1]).^2)./abs.(u[3:NX].-u[2:NX-1])) .* ((1/n)-1) .* abs.(u[3:NX].-u[2:NX-1]).^((1/n)-2) .- h[2:NX-1] .* abs.(u[2:NX-1] .- u[1:NX-2]).^((1/n)-1) .- h[2:NX-1] .* (((u[2:NX-1] .- u[1:NX-2]).^2)./abs.(u[2:NX-1] .- u[1:NX-2])) .* ((1/n)-1) .* abs.(u[2:NX-1] .- u[1:NX-2]).^((1/n)-2)) .-
- #                abs.(u[2:NX-1]).^(m-1) .- (m-1) .* (u[2:NX-1].^2)./(abs.(u[2:NX-1])) .* abs.(u[2:NX-1]).^(m-2);
- #    Ju_um1[2:NX-1] = (4 .* eps ./(xg .* ds[2:NX-1]).^((1/n)+1)) .* (h[2:NX-1] .* abs.(u[2:NX-1] .- u[1:NX-2]).^((1/n)-1) .+ h[2:NX-1] .* (((u[2:NX-1] .- u[1:NX-2]).^2)./abs.(u[2:NX-1] .- u[1:NX-2])) .* ((1/n)-1) .* abs.(u[2:NX-1] .- u[1:NX-2]).^((1/n)-2));
- #    Ju_up1[2:NX-1] = (4 .* eps ./(xg .* ds[2:NX-1]).^((1/n)+1)) .* (h[3:NX] .* abs.(u[3:NX].-u[2:NX-1]).^((1/n)-1) .+ h[3:NX] .* (((u[3:NX] .- u[2:NX-1]).^2)./abs.(u[3:NX].-u[2:NX-1])) .* ((1/n)-1) .* abs.(u[3:NX].-u[2:NX-1]).^((1/n)-2));
- #    Ju_xg[2:NX-1] = ((-1/n)-1).* xg.^((-1/n)-2) .* (4 .* eps ./(ds[2:NX-1]).^((1/n)+1)) .* (h[3:NX] .* (u[3:NX] .- u[2:NX-1]) .* abs.(u[3:NX].-u[2:NX-1]).^((1/n)-1) .- h[2:NX-1] .* (u[2:NX-1] .- u[1:NX-2]) .* abs.(u[2:NX-1] .- u[1:NX-2]).^((1/n)-1)) .+
- #                0.5 .* (h[2:NX-1] .+ h[3:NX]) .* (h[3:NX] .- b[3:NX] .- h[2:NX-1] .+ b[2:NX-1])./((xg^2) .* ds[2:NX-1]);
- #
- #    Ju_h = spdiagm(NX, NX, 0 => Ju_h0, 1 => Ju_hp1);
- #    Ju_u = spdiagm(NX, NX, 0 => Ju_u0, -1 => Ju_um1, 1 => Ju_up1);
- #    J[NX+1:2*NX,1:NX] = J[NX+1:2*NX,1:NX] .+ Ju_h;
- #    J[NX+1:2*NX,NX+1:2*NX] = J[NX+1:2*NX,NX+1:2*NX] .+ Ju_u;
- #    J[NX+1:2*NX,2*NX+1] = J[NX+1:2*NX,2*NX+1] .+ Ju_xg;
- #
- #    J[2*NX,2*NX-1]     = (1/(xg*ds[NX-1])^(1/n))*(-(abs(u[NX]-u[NX-1])^((1/n)-1)) - ((1/n)-1)*(abs(u[NX]-u[NX-1])^((1/n)-2))*((u[NX]-u[NX-1])^2)/(abs(u[NX]-u[NX-1])));
- #    J[2*NX,2*NX]       = (1/(xg*ds[NX-1])^(1/n))*((abs(u[NX]-u[NX-1])^((1/n)-1)) + ((1/n)-1)*(abs(u[NX]-u[NX-1])^((1/n)-2))*((u[NX]-u[NX-1])^2)/(abs(u[NX]-u[NX-1])));
- #    J[2*NX,2*NX+1]     = (-1/n)*(xg^((-1/n)-1))*(1/(ds[NX-1])^(1/n))*(abs(u[NX]-u[NX-1])^((1/n)-1))*(u[NX]-u[NX-1]) - lambda*dhfdx/(8*eps);
- #
- #    #Calculate grounding line functions
- #    J[2*NX+1,NX-1]        = -1;
- #    J[2*NX+1,NX]          = 3;
- #    J[2*NX+1,2*NX+1]      = -2 * dhfdx;
- # end
 
 #Initial steady-state calculation
 xg = 200e3/params["xscale"];
@@ -261,12 +133,7 @@ u  = 0.3.*(grid["sigma_elem"].^(1/3)) .+ 1e-3;
 huxg_old = vcat(h,u,xg);
 huxg     = huxg_old;
 
-#F = Vector{Float64}(undef,2*params["NX"]+1);
-#tg = flowline!(F, huxg, huxg_old, params, grid, bed);
-#Jman = fill(0.0, 2*params["NX"]+1, 2*params["NX"]+1);
-#flowline_jac!(Jman,huxg, huxg_old, params, grid, bed, dbdx);
-#flowline2!(tg4,huxg, huxg_old, params, grid);
-
+#Use automatic differentiation to calculate Jacobian for nonlinear solver (more accurate and faster than finite difference!)
 f = varin -> (F = fill(zero(promote_type(eltype(varin), Float64)), 2*params["NX"]+1); flowline!(F, varin, huxg_old, params, grid, bed); return F)
 J = fill(0.0, 2*params["NX"]+1, 2*params["NX"]+1);
 Jf! = (J,varin) -> ForwardDiff.jacobian!(J, f, varin);
